@@ -556,6 +556,8 @@ func (t *UFAChainCode) Invoke(stub shim.ChaincodeStubInterface, function string,
 		updateUFA(stub, args)
 	} else if function == "createNewInvoices" {
 		createNewInvoices(stub, args)
+	} else if function == "updateInvoice" {
+		updateInvoice(stub, args)
 	}
 
 	return nil, nil
