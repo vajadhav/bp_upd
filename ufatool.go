@@ -176,12 +176,12 @@ func checkInvoicesRaised(stub shim.ChaincodeStubInterface, ufaNumber string, bil
 func getInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	
 	var outputRecord map[string]string
-	invoiceNumberText := args[0] //Invoice Number
+	invoiceNumber := args[0] //Invoice Number
 	//who :=args[1] //Role
 	
 	logger.Info("getInvoice called with Invoice Number: "+args[0])
 	
-	recBytes, _ := stub.GetState(invoiceNumberText)
+	recBytes, _ := stub.GetState(invoiceNumber)
 	json.Unmarshal(recBytes, &outputRecord)
 	outputBytes, _ := json.Marshal(outputRecord)
 	logger.Info("Returning records from getInvoice " + string(outputBytes))
