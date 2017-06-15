@@ -181,8 +181,8 @@ func updateInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, err
 
 	invoiceNumber := args[0]
 	//TODO: Update the validation here
-	//who := args[1]
-	payload := args[2]
+	payload := args[1]
+	//who := args[2]
 	logger.Info("updateInvoice payload passed " + payload)
 
 	recBytes, _ := stub.GetState(invoiceNumber)
