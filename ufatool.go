@@ -70,6 +70,8 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 		vendInvoice := invoiceList[1]
 		//Get the ufa details
 		ufanumber := custInvoice["ufanumber"]
+		invoiceNumber :=custInvoice["invoiceNumber"]
+		sapDocumentNumber :=custInvoice["sapDocumentNumber"]
 		var ufaDetails map[string]string
 		//who :=args[1] //Role
 		//Get the ufaDetails
@@ -84,12 +86,17 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 		//stub.PutState(,json.Marshal)
 		bytesToStoreCustInvoice, _ := json.Marshal(custInvoice)
 		bytesToStoreVendInvoice, _ := json.Marshal(vendInvoice)
+		bytesToStoreSapDocumentNumber,_:= json.Marshal(custInvoice)
 		stub.PutState(custInvoice["invoiceNumber"], bytesToStoreCustInvoice)
 		stub.PutState(vendInvoice["invoiceNumber"], bytesToStoreVendInvoice)
+	    stub.PutState( sapDocumentNumber,bytesToStoreSapDocumentNumber)
 		//Append the invoice numbers to ufa details
 		addInvoiceRecordsToUFA(stub, ufanumber, custInvoice["invoiceNumber"], vendInvoice["invoiceNumber"])
+		//Append the SAP Document number to Invoice Raised
+		addSAPDocNumberToInvoice(stub, invoiceNumber, sapDocumentNumber)
 		//Update the master records
 		updateInventoryMasterRecords(stub, custInvoice["invoiceNumber"], vendInvoice["invoiceNumber"])
+		
 		//Update the original ufa details
 		var updateInput []string
 		updateInput = make([]string, 3)
@@ -259,6 +266,26 @@ func getAllInvloiceFromMasterList(stub shim.ChaincodeStubInterface) ([]string, e
 	return recordList, nil
 }
 
+//Append the SAP Document number to the UFA
+func addSAPDocNumberToInvoice(stub shim.ChaincodeStubInterface, invoiceNumber string, sapDocNumber string) error {
+logger.Info("Adding SAP Document number from SAP to Invoice " + invoiceNumber)
+	
+	var outputRecord []string
+	
+	recBytes, _ := stub.GetState(invoiceNumber)
+	err := json.Unmarshal(recBytes, &outputRecord)
+	if err != nil || recBytes == nil {
+		outputRecord = make([]string, 0)
+	}
+	outputRecord = append(outputRecord, sapDocNumber)
+	bytesToStore, _ := json.Marshal(outputRecord)
+	logger.Info("After addition Document Number from SAP" + string(bytesToStore))
+	stub.PutState(invoiceNumber, bytesToStore)
+	
+	logger.Info("Adding Document Number from SAP to Invoice :Done ")
+	return nil
+}
+
 //Append the invoice number to the UFA
 func addInvoiceRecordsToUFA(stub shim.ChaincodeStubInterface, ufanumber string, custInvoiceNum string, vendInvoiceNum string) error {
 	logger.Info("Adding invoice numbers to UFA" + ufanumber)
@@ -278,6 +305,8 @@ func addInvoiceRecordsToUFA(stub shim.ChaincodeStubInterface, ufanumber string, 
 	logger.Info("Adding invoice numbers to UFA :Done ")
 	return nil
 }
+
+
 
 //Append a new UFA numbetr to the master list
 func updateMasterRecords(stub shim.ChaincodeStubInterface, ufaNumber string) error {
