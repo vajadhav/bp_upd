@@ -181,21 +181,31 @@ func checkInvoicesRaised(stub shim.ChaincodeStubInterface, ufaNumber string, bil
 
 // Update Invoice 
 func updateInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
 	var existingRecMap map[string]string
 	var updatedFields map[string]string
-
+	
+	
 	logger.Info("updateInvoice called ")
 
 	invoiceNumber := args[0]
 	//TODO: Update the validation here
 	payload := args[1]
 	//who := args[2]
+	
+	
 	logger.Info("updateInvoice payload passed " + payload)
 
 	recBytes, _ := stub.GetState(invoiceNumber)
 
 	json.Unmarshal(recBytes, &existingRecMap)
 	json.Unmarshal([]byte(payload), &updatedFields)
+	
+	status := updatedFields["status"]
+	sapDocumentNumber := updatedFields["sapDocumentNumber"]
+	fmt.Println("status is  :"+ status)
+	fmt.Println("sapDocumentNumber is  :"+ sapDocumentNumber)
+	
 	updatedReord, _ := updateRecord(existingRecMap, updatedFields)
 	//Store the records
 	stub.PutState(invoiceNumber, []byte(updatedReord))
