@@ -70,8 +70,6 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 		vendInvoice := invoiceList[1]
 		//Get the ufa details
 		ufanumber := custInvoice["ufanumber"]
-		invoiceNumber :=custInvoice["invoiceNumber"]
-		sapDocumentNumber :=custInvoice["sapDocumentNumber"]
 		var ufaDetails map[string]string
 		//who :=args[1] //Role
 		//Get the ufaDetails
@@ -86,17 +84,12 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 		//stub.PutState(,json.Marshal)
 		bytesToStoreCustInvoice, _ := json.Marshal(custInvoice)
 		bytesToStoreVendInvoice, _ := json.Marshal(vendInvoice)
-		bytesToStoreSapDocumentNumber,_:= json.Marshal(custInvoice)
 		stub.PutState(custInvoice["invoiceNumber"], bytesToStoreCustInvoice)
 		stub.PutState(vendInvoice["invoiceNumber"], bytesToStoreVendInvoice)
-	    stub.PutState( sapDocumentNumber,bytesToStoreSapDocumentNumber)
 		//Append the invoice numbers to ufa details
 		addInvoiceRecordsToUFA(stub, ufanumber, custInvoice["invoiceNumber"], vendInvoice["invoiceNumber"])
-		//Append the SAP Document number to Invoice Raised
-		addSAPDocNumberToInvoice(stub, invoiceNumber, sapDocumentNumber)
 		//Update the master records
 		updateInventoryMasterRecords(stub, custInvoice["invoiceNumber"], vendInvoice["invoiceNumber"])
-		
 		//Update the original ufa details
 		var updateInput []string
 		updateInput = make([]string, 3)
@@ -110,6 +103,22 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 		return nil, errors.New("CreateNewInvoice Validation failure: " + validationMessag)
 	}
 
+}
+
+//Returns the Invoice Raised by Invoice Number
+func getInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	
+	var outputRecord map[string]string
+	invoiceNumber := args[0] //Invoice Number
+	//who :=args[1] //Role
+	
+	logger.Info("getInvoice called with Invoice Number: "+args[0])
+	
+	recBytes, _ := stub.GetState(invoiceNumber)
+	json.Unmarshal(recBytes, &outputRecord)
+	outputBytes, _ := json.Marshal(outputRecord)
+	logger.Info("Returning records from getInvoice " + string(outputBytes))
+	return outputBytes, nil
 }
 
 //Validate Invoice
@@ -179,54 +188,6 @@ func checkInvoicesRaised(stub shim.ChaincodeStubInterface, ufaNumber string, bil
 	return isAvailable
 }
 
-// Update Invoice 
-func updateInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	
-	var existingRecMap map[string]string
-	var updatedFields map[string]string
-	
-	
-	logger.Info("updateInvoice called ")
-
-	invoiceNumber := args[0]
-	//TODO: Update the validation here
-	payload := args[1]
-	//who := args[2]
-	
-	
-	logger.Info("updateInvoice payload passed " + payload)
-
-	recBytes, _ := stub.GetState(invoiceNumber)
-
-	json.Unmarshal(recBytes, &existingRecMap)
-	json.Unmarshal([]byte(payload), &updatedFields)
-	
-	status := updatedFields["status"]
-	sapDocumentNumber := updatedFields["sapDocumentNumber"]
-	fmt.Println("status is  :"+ status)
-	fmt.Println("sapDocumentNumber is  :"+ sapDocumentNumber)
-	
-	updatedReord, _ := updateRecord(existingRecMap, updatedFields)
-	//Store the records
-	stub.PutState(invoiceNumber, []byte(updatedReord))
-	return nil, nil
-}
-//Returns the Invoice Raised by Invoice Number
-func getInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	
-	var outputRecord map[string]string
-	invoiceNumber := args[0] //Invoice Number
-	//who :=args[1] //Role
-	
-	logger.Info("getInvoice called with Invoice Number: "+args[0])
-	
-	recBytes, _ := stub.GetState(invoiceNumber)
-	json.Unmarshal(recBytes, &outputRecord)
-	outputBytes, _ := json.Marshal(outputRecord)
-	logger.Info("Returning records from getInvoice " + string(outputBytes))
-	return outputBytes, nil
-}
-
 //Returns all the invoices raised for an UFA
 func getInvoicesForUFA(stub shim.ChaincodeStubInterface, ufanumber string) []map[string]string {
 	logger.Info("getInvoicesForUFA called")
@@ -248,7 +209,6 @@ func getInvoicesForUFA(stub shim.ChaincodeStubInterface, ufanumber string) []map
 	logger.Info("Returning records from getInvoicesForUFA ")
 	return outputRecords
 }
-
 
 //Retrieve all the invoice list
 func getAllInvloiceList(stub shim.ChaincodeStubInterface, ufanumber string) ([]string, error) {
@@ -276,26 +236,6 @@ func getAllInvloiceFromMasterList(stub shim.ChaincodeStubInterface) ([]string, e
 	return recordList, nil
 }
 
-//Append the SAP Document number to the UFA
-func addSAPDocNumberToInvoice(stub shim.ChaincodeStubInterface, invoiceNumber string, sapDocNumber string) error {
-logger.Info("Adding SAP Document number from SAP to Invoice " + invoiceNumber)
-	
-	var outputRecord []string
-	
-	recBytes, _ := stub.GetState(invoiceNumber)
-	err := json.Unmarshal(recBytes, &outputRecord)
-	if err != nil || recBytes == nil {
-		outputRecord = make([]string, 0)
-	}
-	outputRecord = append(outputRecord, sapDocNumber)
-	bytesToStore, _ := json.Marshal(outputRecord)
-	logger.Info("After addition Document Number from SAP" + string(bytesToStore))
-	stub.PutState(invoiceNumber, bytesToStore)
-	
-	logger.Info("Adding Document Number from SAP to Invoice :Done ")
-	return nil
-}
-
 //Append the invoice number to the UFA
 func addInvoiceRecordsToUFA(stub shim.ChaincodeStubInterface, ufanumber string, custInvoiceNum string, vendInvoiceNum string) error {
 	logger.Info("Adding invoice numbers to UFA" + ufanumber)
@@ -315,8 +255,6 @@ func addInvoiceRecordsToUFA(stub shim.ChaincodeStubInterface, ufanumber string, 
 	logger.Info("Adding invoice numbers to UFA :Done ")
 	return nil
 }
-
-
 
 //Append a new UFA numbetr to the master list
 func updateMasterRecords(stub shim.ChaincodeStubInterface, ufaNumber string) error {
@@ -595,8 +533,6 @@ func (t *UFAChainCode) Invoke(stub shim.ChaincodeStubInterface, function string,
 		updateUFA(stub, args)
 	} else if function == "createNewInvoices" {
 		createNewInvoices(stub, args)
-	} else if function == "updateInvoice" {
-		updateInvoice(stub, args)
 	}
 
 	return nil, nil
@@ -621,8 +557,6 @@ func (t *UFAChainCode) Query(stub shim.ChaincodeStubInterface, function string, 
 		return getInvoiceDetails(stub, args)
 	} else if function == "getAllInvoicesForUsr" {
 		return getAllInvoicesForUsr(stub, args)
-	} else if function == "getInvoice" {
-		return getInvoice(stub, args)
 	}
 	return nil, nil
 }
