@@ -105,22 +105,6 @@ func createNewInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte,
 
 }
 
-//Returns the Invoice Raised by Invoice Number
-func getInvoice(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	
-	var outputRecord map[string]string
-	invoiceNumber := args[0] //Invoice Number
-	//who :=args[1] //Role
-	
-	logger.Info("getInvoice called with Invoice Number: "+args[0])
-	
-	recBytes, _ := stub.GetState(invoiceNumber)
-	json.Unmarshal(recBytes, &outputRecord)
-	outputBytes, _ := json.Marshal(outputRecord)
-	logger.Info("Returning records from getInvoice " + string(outputBytes))
-	return outputBytes, nil
-}
-
 //Validate Invoice
 func validateInvoiceDetails(stub shim.ChaincodeStubInterface, args []string) string {
 
@@ -421,6 +405,34 @@ func updateUFA(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) 
 	return nil, nil
 }
 
+func updateInvoices(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var inputData []map[string]string
+	var existingRecMap map[string]string
+
+	logger.Info("updateInvoices called ")
+
+	//TODO: Update the validation here
+	//who := args[0]
+	payload := args[1]
+	logger.Info("updateInvoices payload passed " + payload)
+
+	//who :=args[2]
+	json.Unmarshal([]byte(payload), &inputData)
+	for _, invoiceDataFields := range inputData {
+		debugBytes, _ := json.Marshal(invoiceDataFields)
+		logger.Info("updateInvoices payload passed " + string(debugBytes))
+		invoiceNumber := invoiceDataFields["invoiceNumber"]
+		logger.Info("updateInvoices going to get details of invoice " + invoiceNumber)
+
+		recBytes, _ := stub.GetState(invoiceNumber)
+		json.Unmarshal(recBytes, &existingRecMap)
+		updatedReord, _ := updateRecord(existingRecMap, invoiceDataFields)
+		stub.PutState(invoiceNumber, []byte(updatedReord))
+	}
+
+	return nil, nil
+}
+
 //Returns all the UFAs created so far
 func getAllUFA(stub shim.ChaincodeStubInterface, who string) ([]byte, error) {
 	logger.Info("getAllUFA called")
@@ -533,6 +545,8 @@ func (t *UFAChainCode) Invoke(stub shim.ChaincodeStubInterface, function string,
 		updateUFA(stub, args)
 	} else if function == "createNewInvoices" {
 		createNewInvoices(stub, args)
+	} else if function == "updateInvoices" {
+		updateInvoices(stub, args)
 	}
 
 	return nil, nil
